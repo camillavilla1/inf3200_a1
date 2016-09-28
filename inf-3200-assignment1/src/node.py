@@ -5,11 +5,47 @@ import re
 import signal
 import socket
 import threading
+import hashlib
 
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 
 
 object_store = {}
+node_list = []
+
+class Node():
+    def __init__(self):
+        self.id = 0
+        self.object_store = {}
+        self.next = 0
+        self.prev = 0
+        self.pub_id = 0
+
+    def insert_key(self, key, value):
+        # if self.check_storage():
+        self.object_store[key] = value
+        if len(object_store) is 1:
+            self.pub_id = object_store.itervalues().next()
+        print "inserted key: ", key, "and value: ", value
+        print self.object_store
+
+    def is_last(self):
+        if node.next != 0:
+            return False
+        else:
+            return True
+
+    def set_id(self, id):
+        self.id = id
+
+    #
+    # def check_storage(self):
+    #     if len(self.object_store) >= 1:
+    #         return False
+    #     else:
+    #         return True
+
+
 
 class NodeHttpHandler(BaseHTTPRequestHandler):
 
@@ -22,7 +58,35 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         key = self.extract_key_from_path(self.path)
         value = self.rfile.read(content_length)
 
-        object_store[key] = value
+        h_key = hash_value(value)
+
+        for node in node_list:
+            if (h_key > node.pub_id and h_key not in node.object_store):
+                node.insert_key(h_key, value)
+            elif node.is_last():
+                node.insert_key(h_key, value)
+
+        #
+        # if (len(node_list) is 0):
+        #     node = initiate_new_node(0, 0, 0)
+        #     print "made initial node"
+        #     node_list.append(node)
+        #     print node_list
+        # else:
+        #     node = node_list[-1]
+        #
+        #
+        #
+        # if (node.check_storage()):
+        #     node.insert_key(key, value)
+        # else:
+        #     node = initiate_new_node(len(node_list), node, 0)
+        #     print "made a new node"
+        #     node_list.append(node)
+        #     print node_list
+        #     node.insert_key(key, value)
+
+        #object_store[key] = value
 
         # Send OK response
         self.send_response(200)
@@ -32,18 +96,47 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         key = self.extract_key_from_path(self.path)
 
-        if key in object_store:
-            self.send_response(200)
-            self.send_header('Content-type','text/plain')
-            self.send_header('Content-length',len(object_store[key]))
-            self.end_headers()
-            self.wfile.write(object_store[key])
-        else:
-            self.send_response(404)
-            self.send_header('Content-type','text/plain')
-            self.end_headers()
-            self.wfile.write("No object with key '%s' on this node" % key)
+        #node = node_list[0]
 
+        for node in node_list:
+            if key in node.object_store:
+                self.send_response(200)
+                self.send_header('Content-type','text/plain')
+                self.send_header('Content-length',len(node.object_store[key]))
+                self.end_headers()
+                self.wfile.write(node.object_store[key])
+                break
+        #    else:
+
+        self.send_response(404)
+        self.send_header('Content-type','text/plain')
+        self.end_headers()
+        self.wfile.write("No object with key '%s' on this node" % key)
+
+
+        # if key in node.object_store:
+        #     self.send_response(200)
+        #     self.send_header('Content-type','text/plain')
+        #     self.send_header('Content-length',len(node.object_store[key]))
+        #     self.end_headers()
+        #     self.wfile.write(node.object_store[key])
+        # else:
+        #     self.send_response(404)
+        #     self.send_header('Content-type','text/plain')
+        #     self.end_headers()
+        #     self.wfile.write("No object with key '%s' on this node" % key)
+
+
+def initiate_new_node(id, next, prev):
+    return Node(id, next, prev)
+
+def hash_value(value):
+    m = hashlib.sha1()
+    m.update(value)
+    m.hexdigest()
+    print m
+    print m.digest_size
+    return m
 
 def parse_args():
     PORT_DEFAULT = 8000
@@ -64,10 +157,30 @@ def parse_args():
 
     return parser.parse_args()
 
+def node_handler(first_node, nr_nodes):
+    node_counter = first_node
+    for i in range(nr_nodes - 1):
+        node = Node()
+        node.id = i + 1
+        node.prev = node_counter
+        node_counter.next = node
+        node_counter = node
+        node_list.append(node)
+
+
+
 
 if __name__ == "__main__":
 
+    #node_nr = 0
+    #number_of_nodes = 1
+    node = Node()
+    node.set_id(0)
+    node_handler(node, 16)
     args = parse_args()
+
+
+
 
     server = HTTPServer(('', args.port), NodeHttpHandler)
 
