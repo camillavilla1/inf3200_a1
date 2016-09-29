@@ -15,6 +15,7 @@ class NameserverHttpHandler(BaseHTTPRequestHandler):
         # URL path component is address. Just strip leading slash.
         newaddress = re.sub(r'/?([a-zA-Z0-9.-]+:\d+)', r'\1', self.path)
         node_addresses.append(newaddress)
+        # print node_addresses
 
         # Send OK response
         self.send_response(200)
