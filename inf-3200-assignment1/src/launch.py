@@ -84,6 +84,7 @@ if __name__ == "__main__":
         # Launch nodes
         for node in nodes:
             launch(node.host, "./node.py --port=%d --nameserver=%s" % (node.port, nameserver))
+            # time.sleep(1)
 
         # Either run client for tests, or wait for input
         if args.run_tests:

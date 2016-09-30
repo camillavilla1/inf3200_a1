@@ -7,11 +7,11 @@ import socket
 import threading
 import hashlib
 import random
+import time
+
 
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from nameserver import node_addresses
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 
 # object_store = {}
@@ -58,26 +58,37 @@ class Node():
             if check_id > n_id and larger is 0:
                 larger = check_id
                 # largest = check_id
-                print "====larger====", larger
-            if check_id <= n_id and smallest is 0:
-                smallest = check_id
+                # print "====larger====", larger
 
             if check_id > n_id and check_id < larger:
+                # print '1, larger: ', larger, "checkid: ", check_id, "nid: ", n_id
                 larger = check_id
 
-            if check_id >= n_id:
-                largest = check_id
-
-            if check_id <= n_id and check_id < smallest:
+            if check_id <= n_id and smallest is 0:
+                # print '2, smallest: ', smallest, "checkid: ", check_id, "nid: ", n_id
                 smallest = check_id
 
-        if largest is n_id:
+            if check_id <= n_id and check_id < smallest:
+                # print "3, smallest: ", smallest, "checkid: ", check_id, "nid: ", n_id
+                smallest = check_id
+
+            if check_id >= n_id and largest is 0:
+                # print '4, largest: ', largest, "checkid: ", check_id, "nid: ", n_id
+                largest = check_id
+
+            if check_id >= n_id and check_id > largest:
+                # print '5, largest: ', largest, "checkid: ", check_id, "nid: ", n_id
+                largest = check_id
+
+        if largest == n_id:
             return smallest
 
         return larger
 
     def find_predecessor(self, n_id):
         smaller = 0
+        smallest = 0
+        largest = 0
         for n in node_addresses:
             check_id = hash_value(n)
             if check_id < n_id and smaller is 0:
@@ -85,17 +96,20 @@ class Node():
             if check_id < n_id and check_id > smaller:
                 smaller = check_id
 
+            if check_id <= n_id and smallest is 0:
+                smallest = check_id
+            if check_id <= n_id and check_id < smallest:
+                smallest = check_id
+
+            if check_id >= n_id and largest is 0:
+                largest = check_id
+            if check_id >= n_id and check_id > largest:
+                largest = check_id
+
+        if smallest == n_id:
+            return largest
+
         return smaller
-
-
-
-    #
-    # def check_storage(self):
-    #     if len(self.object_store) >= 1:
-    #         return False
-    #     else:
-    #         return True
-
 
 
 class NodeHttpHandler(BaseHTTPRequestHandler):
@@ -108,6 +122,21 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
     def extract_key_from_path(self, path):
         return re.sub(r'/?(\w+)', r'\1', path)
 
+
+    def do_SEND(self, node, key, value):
+        conn = httplib.HTTPConnection(node)
+        conn.request("PUT", "/"+key, value)
+        conn.getresponse()
+        conn.close
+
+    def do_CONN(self):
+        key = self.extract_key_from_path(self.path)
+        h_key = hash_value(key)
+        int_key = int(h_key, 16)
+
+        if int_key > node.id:
+            pass
+
     def do_PUT(self):
         content_length = int(self.headers.getheader('content-length', 0))
 
@@ -119,11 +148,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 
         for node in node_list:
             print "node", node
-            print "node next:", node.next.pub_id
-            print type(node.next.pub_id)
             if (h_key > node.pub_id and h_key not in node.object_store):
-                # if node.next and node.pub_id is 0:
-                    # continue
                 node.insert_key(h_key, value)
                 break
             elif node.is_last():
@@ -165,7 +190,7 @@ def hash_value(value):
     m.hexdigest()
     # print m.hexdigest()
     short = m.hexdigest()
-    short = short[:6]
+    # short = short[:6]
     short = int(short, 16)
     # print short
     return short
@@ -189,16 +214,14 @@ def parse_args():
 
     return parser.parse_args()
 
-def node_handler(first_node, nr_nodes):
-    node_counter = first_node
-    node_list.append(node_counter)
-    for i in range(nr_nodes - 1):
-        node = Node()
-        node.id = i + 1
-        node.prev = node_counter
-        node_counter.next = node
-        node_counter = node
-        node_list.append(node)
+
+def connect_node(node, key, METHOD):
+    conn = httplib.HTTPConnection(node)
+    conn.request(METHOD, "/"+key)
+    conn.getresponse()
+    conn.close
+
+
 
 def get_list_of_nodes(nameserver):
     conn = httplib.HTTPConnection(nameserver)
@@ -214,14 +237,6 @@ def get_list_of_nodes(nameserver):
 def init_node(node, address):
     node.n_id = hash_value(address)
     node.address = address
-
-    node.successor = node.find_successor(node.n_id)
-    node.predecessor = node.find_predecessor(node.n_id)
-    print "node ", node.n_id, "successor", node.successor
-    print "node ", node.n_id, "predecessor", node.predecessor
-
-
-
 
 if __name__ == "__main__":
 
@@ -269,11 +284,17 @@ if __name__ == "__main__":
         conn.request("PUT", "/"+my_address, "")
         conn.getresponse()
         conn.close()
+    # time.sleep(2)
 
     node_addresses = get_list_of_nodes(args.nameserver)
     print node_addresses
 
     init_node(node, address)
+    rand_node = random.choice(node_addresses)
+    connect_node(rand_node, node.address, do_CONN)
+
+    nod = node_addresses[node.successor]
+    do_SEND
 
     # print node_addresses
     # Wait on server thread, until timeout has elapsed
