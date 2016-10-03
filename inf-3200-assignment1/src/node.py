@@ -25,6 +25,7 @@ class Node():
     object_store = {}
     successor = (0, '')
     predecessor = (0, '')
+    neighbour = str(successor[1] + predecessor[1])
     pub_id = 0
 
     def insert_key(self, key, value):
@@ -129,10 +130,13 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         conn.getresponse()
         conn.close
 
-    def do_CONN(self):
+    def do_POST(self):
         key = self.extract_key_from_path(self.path)
         h_key = hash_value(key)
         int_key = int(h_key)
+        tmp = (0, '')
+
+        print "key", key
 
         #If alone, first node in.
         if int_key == node.n_id:
@@ -140,17 +144,30 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
                 node.successor = (node.n_id, node.address)
             if node.predecessor[0] == 0:
                 node.predecessor = (node.n_id, node.address)
+            print "FIRST BITCHES"
+            node.neighbour = str((str(node.successor[1]), str(node.predecessor[1])))
+
 
         if int_key > node.n_id:
             if int_key > node.successor[0]:
                 if node.successor[0] == node.n_id:
                     node.successor = (int_key, key)
+                    print node.successor
+                    connect_node(key, node.address, 'POST')
+                    self.send_response(200)
+                    self.end_headers()
                 else:
-                    connect_node(node.successor[1], key, 'CONN')
+                    print "[1] Connect to node: ", node.successor[1], "(successor) with key ", key
+                    # self.send_response(200)
+                    # self.end_headers()
+                    # connect_node(key, node.successor[1], 'POST')
             elif int_key < node.successor[0]:
                 tmp = (node.successor[0], node.successor[1])
                 node.successor = (int_key, key)
-                connect_node(tmp[1], key, 'CONN')
+                print "[2] Connect to node: ", node.successor[1], " (successor) with key ", key
+                # self.send_response(200)
+                # self.end_headers()
+                # connect_node(key, tmp[1], 'POST')
             else:
                 return
         elif int_key < node.n_id:
@@ -158,14 +175,27 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
                 if node.predecessor[0] == node.n_id:
                     node.predecessor = (int_key, key)
                 else:
-                    connect_node(node.predecessor[1], key, 'CONN')
+                    print "[3] Connect to node: ", node.predcessor[1], "(predecessor) with key ", key
+                    # self.send_response(200)
+                    # self.end_headers()
+                    # connect_node(key, node.predecessor[1], 'POST')
             elif int_key > node.predecessor[0]:
                 tmp = (node.predecessor[0], node.predecessor[1])
                 node.predecessor = (int_key, key)
-                connect_node(tmp[1], key, 'CONN')
+                print "[4] Connect to node with tmp: ", tmp[1], "with key ", key
+                # self.send_response(200)
+                # self.end_headers()
+                # connect_node(key, tmp[1], 'POST')
             else:
                 return
 
+        elif node.successor[0] == 0:
+            if tmp[0] != 0: # is the next
+                node.successor = (tmp[0], temp[1])
+
+        print_shit(node)
+
+        print "node.neighbour: ", node.neighbour
         self.send_response(200)
         self.end_headers()
 
@@ -244,8 +274,10 @@ def parse_args():
 def connect_node(node, key, METHOD):
     conn = httplib.HTTPConnection(node)
     conn.request(METHOD, "/"+key)
-    conn.getresponse()
+    resp = conn.getresponse()
     conn.close
+    data = resp.read()
+    print "received data: ", data
 
 def print_shit(node):
     print "node successor: ", node.successor, "node predecessor: ", node.predecessor, "node_id: ", node.n_id
@@ -318,9 +350,10 @@ if __name__ == "__main__":
     print node_addresses
 
     init_node(node, address)
-    rand_node = random.choice(node_addresses)
-    connect_node(rand_node, node.address, 'CONN')
+    # rand_node = random.choice(node_addresses)
+    rand_node = node_addresses[0]
     print_shit(node)
+    connect_node(rand_node, node.address, 'POST')
 
 
     # print node_addresses
