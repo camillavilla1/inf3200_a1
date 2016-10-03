@@ -23,8 +23,8 @@ class Node():
     n_id = 0
     address = ''
     object_store = {}
-    successor = 0
-    predecessor = 0
+    successor = (0, '')
+    predecessor = (0, '')
     pub_id = 0
 
     def insert_key(self, key, value):
@@ -132,10 +132,42 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
     def do_CONN(self):
         key = self.extract_key_from_path(self.path)
         h_key = hash_value(key)
-        int_key = int(h_key, 16)
+        int_key = int(h_key)
 
-        if int_key > node.id:
-            pass
+        #If alone, first node in.
+        if int_key == node.n_id:
+            if node.successor[0] == 0:
+                node.successor = (node.n_id, node.address)
+            if node.predecessor[0] == 0:
+                node.predecessor = (node.n_id, node.address)
+
+        if int_key > node.n_id:
+            if int_key > node.successor[0]:
+                if node.successor[0] == node.n_id:
+                    node.successor = (int_key, key)
+                else:
+                    connect_node(node.successor[1], key, 'CONN')
+            elif int_key < node.successor[0]:
+                tmp = (node.successor[0], node.successor[1])
+                node.successor = (int_key, key)
+                connect_node(tmp[1], key, 'CONN')
+            else:
+                return
+        elif int_key < node.n_id:
+            if int_key < node.predecessor[0]:
+                if node.predecessor[0] == node.n_id:
+                    node.predecessor = (int_key, key)
+                else:
+                    connect_node(node.predecessor[1], key, 'CONN')
+            elif int_key > node.predecessor[0]:
+                tmp = (node.predecessor[0], node.predecessor[1])
+                node.predecessor = (int_key, key)
+                connect_node(tmp[1], key, 'CONN')
+            else:
+                return
+
+        self.send_response(200)
+        self.end_headers()
 
     def do_PUT(self):
         content_length = int(self.headers.getheader('content-length', 0))
@@ -146,13 +178,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         h_key = hash_value(key)
         int_key = int(h_key, 16)
 
-        for node in node_list:
-            print "node", node
-            if (h_key > node.pub_id and h_key not in node.object_store):
-                node.insert_key(h_key, value)
-                break
-            elif node.is_last():
-                node.insert_key(h_key, value)
+        node.object_store[int_key] = value
 
         # Send OK response
         self.send_response(200)
@@ -221,6 +247,8 @@ def connect_node(node, key, METHOD):
     conn.getresponse()
     conn.close
 
+def print_shit(node):
+    print "node successor: ", node.successor, "node predecessor: ", node.predecessor, "node_id: ", node.n_id
 
 
 def get_list_of_nodes(nameserver):
@@ -291,10 +319,9 @@ if __name__ == "__main__":
 
     init_node(node, address)
     rand_node = random.choice(node_addresses)
-    connect_node(rand_node, node.address, do_CONN)
+    connect_node(rand_node, node.address, 'CONN')
+    print_shit(node)
 
-    nod = node_addresses[node.successor]
-    do_SEND
 
     # print node_addresses
     # Wait on server thread, until timeout has elapsed
