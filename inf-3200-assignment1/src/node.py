@@ -19,14 +19,13 @@ node_list = []
 node_addresses = []
 
 class Node():
-    initialized = 0
-    n_id = 0
-    address = ''
-    object_store = {}
-    successor = (0, '')
-    predecessor = (0, '')
-    neighbour = str(successor[1] + predecessor[1])
-    pub_id = 0
+    def __init__(self, address):
+        self.address = address
+        self.id = hash_value(self.address)
+        self.object_store = {}
+        self.successor = (0, '')
+        self.predecessor = (0, '')
+        # neighbour = str(successor[1] + predecessor[1])
 
     def insert_key(self, key, value):
         # key = int(key, 16)
@@ -34,7 +33,7 @@ class Node():
         # print len(self.object_store)
         # if len(self.object_store) is 1:
         #     self.id = key
-        print "inserted key: ", key, "and value: ", value, "on node: ", id
+        # print "inserted key: ", key, "and value: ", value, "on node: ", id
         print object_store
 
     def retreive_key(self, key):
@@ -48,66 +47,55 @@ class Node():
         else:
             return True
 
-    def find_successor(self, n_id):
-        larger = 0
-        smallest = 0
-        largest = 0
-        # print "inside find_successor, node_addresses: ", node_addresses
-        # print "id = ", n_id
-        for n in node_addresses:
-            check_id = hash_value(n)
-            if check_id > n_id and larger is 0:
-                larger = check_id
-                # largest = check_id
-                # print "====larger====", larger
+    def find_successor(self):
+        larger = (0, '')
+        smallest = (0, '')
+        largest = (0, '')
+        global node_addresses
+        # print "inside find succ list: ", node_addresses
+        for node in node_addresses:
+            compare_id = hash_value(node)
 
-            if check_id > n_id and check_id < larger:
-                # print '1, larger: ', larger, "checkid: ", check_id, "nid: ", n_id
-                larger = check_id
+            if compare_id > self.id and larger[0] is 0:
+                larger = (compare_id, node)
+            if compare_id > self.id and compare_id < larger[0]:
+                larger = (compare_id, node)
+            if compare_id <= self.id and smallest[0] is 0:
+                smallest = (compare_id, node)
+            if compare_id <= self.id and compare_id < smallest[0]:
+                smallest = (compare_id, node)
+            if compare_id >= self.id and largest[0] is 0:
+                largest = (compare_id, node)
+            if compare_id >= self.id and compare_id > largest[0]:
+                largest = (compare_id, node)
 
-            if check_id <= n_id and smallest is 0:
-                # print '2, smallest: ', smallest, "checkid: ", check_id, "nid: ", n_id
-                smallest = check_id
-
-            if check_id <= n_id and check_id < smallest:
-                # print "3, smallest: ", smallest, "checkid: ", check_id, "nid: ", n_id
-                smallest = check_id
-
-            if check_id >= n_id and largest is 0:
-                # print '4, largest: ', largest, "checkid: ", check_id, "nid: ", n_id
-                largest = check_id
-
-            if check_id >= n_id and check_id > largest:
-                # print '5, largest: ', largest, "checkid: ", check_id, "nid: ", n_id
-                largest = check_id
-
-        if largest == n_id:
+        if largest[0] == self.id:
             return smallest
 
         return larger
 
-    def find_predecessor(self, n_id):
-        smaller = 0
-        smallest = 0
-        largest = 0
-        for n in node_addresses:
-            check_id = hash_value(n)
-            if check_id < n_id and smaller is 0:
-                smaller = check_id
-            if check_id < n_id and check_id > smaller:
-                smaller = check_id
+    def find_predecessor(self):
+        smaller = (0, '')
+        smallest = (0, '')
+        largest = (0, '')
+        global node_addresses
+        for node in node_addresses:
+            compare_id = hash_value(node)
 
-            if check_id <= n_id and smallest is 0:
-                smallest = check_id
-            if check_id <= n_id and check_id < smallest:
-                smallest = check_id
+            if compare_id < self.id and smaller[0] is 0:
+                smaller = (compare_id, node)
+            if compare_id < self.id and compare_id > smaller[0]:
+                smaller = (compare_id, node)
+            if compare_id <= self.id and smallest[0] is 0:
+                smallest = (compare_id, node)
+            if compare_id <= self.id and compare_id < smallest[0]:
+                smallest = (compare_id, node)
+            if compare_id >= self.id and largest[0] is 0:
+                largest = (compare_id, node)
+            if compare_id >= self.id and compare_id > largest[0]:
+                largest = (compare_id, node)
 
-            if check_id >= n_id and largest is 0:
-                largest = check_id
-            if check_id >= n_id and check_id > largest:
-                largest = check_id
-
-        if smallest == n_id:
+        if smallest[0] == self.id:
             return largest
 
         return smaller
@@ -130,74 +118,74 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         conn.getresponse()
         conn.close
 
-    def do_POST(self):
-        key = self.extract_key_from_path(self.path)
-        h_key = hash_value(key)
-        int_key = int(h_key)
-        tmp = (0, '')
-
-        print "key", key
-
-        #If alone, first node in.
-        if int_key == node.n_id:
-            if node.successor[0] == 0:
-                node.successor = (node.n_id, node.address)
-            if node.predecessor[0] == 0:
-                node.predecessor = (node.n_id, node.address)
-            print "FIRST BITCHES"
-            node.neighbour = str((str(node.successor[1]), str(node.predecessor[1])))
-
-
-        if int_key > node.n_id:
-            if int_key > node.successor[0]:
-                if node.successor[0] == node.n_id:
-                    node.successor = (int_key, key)
-                    print node.successor
-                    connect_node(key, node.address, 'POST')
-                    self.send_response(200)
-                    self.end_headers()
-                else:
-                    print "[1] Connect to node: ", node.successor[1], "(successor) with key ", key
-                    # self.send_response(200)
-                    # self.end_headers()
-                    # connect_node(key, node.successor[1], 'POST')
-            elif int_key < node.successor[0]:
-                tmp = (node.successor[0], node.successor[1])
-                node.successor = (int_key, key)
-                print "[2] Connect to node: ", node.successor[1], " (successor) with key ", key
-                # self.send_response(200)
-                # self.end_headers()
-                # connect_node(key, tmp[1], 'POST')
-            else:
-                return
-        elif int_key < node.n_id:
-            if int_key < node.predecessor[0]:
-                if node.predecessor[0] == node.n_id:
-                    node.predecessor = (int_key, key)
-                else:
-                    print "[3] Connect to node: ", node.predcessor[1], "(predecessor) with key ", key
-                    # self.send_response(200)
-                    # self.end_headers()
-                    # connect_node(key, node.predecessor[1], 'POST')
-            elif int_key > node.predecessor[0]:
-                tmp = (node.predecessor[0], node.predecessor[1])
-                node.predecessor = (int_key, key)
-                print "[4] Connect to node with tmp: ", tmp[1], "with key ", key
-                # self.send_response(200)
-                # self.end_headers()
-                # connect_node(key, tmp[1], 'POST')
-            else:
-                return
-
-        elif node.successor[0] == 0:
-            if tmp[0] != 0: # is the next
-                node.successor = (tmp[0], temp[1])
-
-        print_shit(node)
-
-        print "node.neighbour: ", node.neighbour
-        self.send_response(200)
-        self.end_headers()
+    # def do_POST(self):
+    #     key = self.extract_key_from_path(self.path)
+    #     h_key = hash_value(key)
+    #     int_key = int(h_key)
+    #     tmp = (0, '')
+    #
+    #     print "key", key
+    #
+    #     #If alone, first node in.
+    #     if int_key == node.id:
+    #         if node.successor[0] == 0:
+    #             node.successor = (node.id, node.address)
+    #         if node.predecessor[0] == 0:
+    #             node.predecessor = (node.id, node.address)
+    #         print "FIRST BITCHES"
+    #         node.neighbour = str((str(node.successor[1]), str(node.predecessor[1])))
+    #
+    #
+    #     if int_key > node.id:
+    #         if int_key > node.successor[0]:
+    #             if node.successor[0] == node.id:
+    #                 node.successor = (int_key, key)
+    #                 print node.successor
+    #                 connect_node(key, node.address, 'POST')
+    #                 self.send_response(200)
+    #                 self.end_headers()
+    #             else:
+    #                 print "[1] Connect to node: ", node.successor[1], "(successor) with key ", key
+    #                 # self.send_response(200)
+    #                 # self.end_headers()
+    #                 # connect_node(key, node.successor[1], 'POST')
+    #         elif int_key < node.successor[0]:
+    #             tmp = (node.successor[0], node.successor[1])
+    #             node.successor = (int_key, key)
+    #             print "[2] Connect to node: ", node.successor[1], " (successor) with key ", key
+    #             # self.send_response(200)
+    #             # self.end_headers()
+    #             # connect_node(key, tmp[1], 'POST')
+    #         else:
+    #             return
+    #     elif int_key < node.id:
+    #         if int_key < node.predecessor[0]:
+    #             if node.predecessor[0] == node.id:
+    #                 node.predecessor = (int_key, key)
+    #             else:
+    #                 print "[3] Connect to node: ", node.predcessor[1], "(predecessor) with key ", key
+    #                 # self.send_response(200)
+    #                 # self.end_headers()
+    #                 # connect_node(key, node.predecessor[1], 'POST')
+    #         elif int_key > node.predecessor[0]:
+    #             tmp = (node.predecessor[0], node.predecessor[1])
+    #             node.predecessor = (int_key, key)
+    #             print "[4] Connect to node with tmp: ", tmp[1], "with key ", key
+    #             # self.send_response(200)
+    #             # self.end_headers()
+    #             # connect_node(key, tmp[1], 'POST')
+    #         else:
+    #             return
+    #
+    #     elif node.successor[0] == 0:
+    #         if tmp[0] != 0: # is the next
+    #             node.successor = (tmp[0], temp[1])
+    #
+    #     print_shit(node)
+    #
+    #     print "node.neighbour: ", node.neighbour
+    #     self.send_response(200)
+    #     self.end_headers()
 
     def do_PUT(self):
         content_length = int(self.headers.getheader('content-length', 0))
@@ -205,8 +193,19 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         key = self.extract_key_from_path(self.path)
         value = self.rfile.read(content_length)
 
+        if key == 'update' and value == '-1':
+            global node_addresses
+            node_addresses = get_list_of_nodes(args.nameserver)
+            init_node(node)
+            # print "inside extra update"
+            # print "node list:", node_addresses
+            # print_shit(node)
+            self.send_response(200)
+            self.end_headers()
+            return
+
         h_key = hash_value(key)
-        int_key = int(h_key, 16)
+        int_key = int(h_key)
 
         node.object_store[int_key] = value
 
@@ -219,24 +218,21 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         key = self.extract_key_from_path(self.path)
 
         h_key = hash_value(key)
-        int_key = int(h_key, 16)
+        int_key = int(h_key)
         #node = node_list[0]
 
-        for node in node_list:
-            if int_key in node.object_store:
-                self.send_response(200)
-                self.send_header('Content-type','text/plain')
-                self.send_header('Content-length',len(node.object_store[int_key]))
-                self.end_headers()
-                self.wfile.write(node.object_store[int_key])
-                break
-        #    else:
-        #
-        # self.send_response(404)
-        # self.send_header('Content-type','text/plain')
-        # self.end_headers()
-        # self.wfile.write("No object with key '%s' on this node" % key)
-        #
+        if int_key in node.object_store:
+            self.send_response(200)
+            self.send_header('Content-type','text/plain')
+            self.send_header('Content-length',len(node.object_store[int_key]))
+            self.end_headers()
+            self.wfile.write(node.object_store[int_key])
+        else:
+            self.send_response(404)
+            self.send_header('Content-type','text/plain')
+            self.end_headers()
+            self.wfile.write("No object with key '%s' on this node" % key)
+
 
 def initiate_new_node(id, next, prev):
     return Node(id, next, prev)
@@ -280,7 +276,7 @@ def connect_node(node, key, METHOD):
     print "received data: ", data
 
 def print_shit(node):
-    print "node successor: ", node.successor, "node predecessor: ", node.predecessor, "node_id: ", node.n_id
+    print "node successor: ", node.successor, "node predecessor: ", node.predecessor, "node_id: ", node.id
 
 
 def get_list_of_nodes(nameserver):
@@ -294,28 +290,24 @@ def get_list_of_nodes(nameserver):
 
     return addresses.split()
 
-def init_node(node, address):
-    node.n_id = hash_value(address)
-    node.address = address
+def init_node(node):
+    node.successor = node.find_successor()
+    node.predecessor = node.find_predecessor()
+    # print_shit(node)
+
 
 if __name__ == "__main__":
 
     #node_nr = 0
     #number_of_nodes = 1
-    node = Node()
 
     # node.set_id(0)
     # node_handler(node, 16)
     args = parse_args()
     # print args
     address = "%s:%d" % (socket.gethostname(), args.port)
-    print address
+    # print address
 
-
-    def node_api(node, *args):
-        handler = NodeHttpHandler(node, args)
-
-    # server = HTTPServer(('', args.port), node_api)
     server = HTTPServer(('', args.port), NodeHttpHandler)
 
     def run_server():
@@ -346,14 +338,26 @@ if __name__ == "__main__":
         conn.close()
     # time.sleep(2)
 
-    node_addresses = get_list_of_nodes(args.nameserver)
-    print node_addresses
+    node = Node(address)
 
-    init_node(node, address)
+    global node_addresses
+    node_addresses = get_list_of_nodes(args.nameserver)
+    # print node_addresses
+
+    # print "init node first time"
+    init_node(node)
+
+
+    for node_addr in node_addresses:
+        conn = httplib.HTTPConnection(node_addr)
+        conn.request('PUT', '/update', '-1')
+        conn.getresponse()
+        conn.close()
+
     # rand_node = random.choice(node_addresses)
-    rand_node = node_addresses[0]
-    print_shit(node)
-    connect_node(rand_node, node.address, 'POST')
+    # rand_node = node_addresses[0]
+    # print_shit(node)
+    # connect_node(rand_node, node.address, 'POST')
 
 
     # print node_addresses
