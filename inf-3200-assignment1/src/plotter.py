@@ -19,3 +19,4 @@ plt.ylabel('operations per second')
 
 
 plt.show()
+plt.savefig('plot.png')

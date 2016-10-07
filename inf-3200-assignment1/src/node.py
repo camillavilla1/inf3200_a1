@@ -76,6 +76,29 @@ class Node():
 
         return smaller
 
+    def node_put(self, key, value):
+        h_key = hash_value(key)
+        h_key = int(h_key)
+
+        if (h_key > self.id or h_key < self.successor[0]):
+            return h_key
+        elif (h_key > self.id and h_key > self.successor[0] and self.successor[0] < node.id):
+            return h_key
+        else:
+            conn = httplib.HTTPConnection(self.successor[1])
+            conn.request('PUT', '/'+key, value)
+            conn.getresponse()
+            conn.close()
+            return 0
+
+    def node_get(self, key):
+        conn = httplib.HTTPConnection(self.successor[1])
+        conn.request('GET', '/'+key)
+        resp = conn.getresponse()
+        conn.close()
+        retval = resp.read()
+        return retval
+
 
 class NodeHttpHandler(BaseHTTPRequestHandler):
     def extract_key_from_path(self, path):
@@ -84,6 +107,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         content_length = int(self.headers.getheader('content-length', 0))
 
+        print "NodeID: ", node.id
         key = self.extract_key_from_path(self.path)
         value = self.rfile.read(content_length)
 
@@ -98,11 +122,37 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
         h_key = hash_value(key)
         int_key = int(h_key)
 
-        node.object_store[int_key] = value
+        new_key = node.node_put(key, value)
+
+        if new_key != 0:
+            node.object_store[new_key] = value
+            self.send_response(200)
+            self.end_headers()
+        else:
+            self.send_response(200)
+            self.end_headers()
+
+        # if (int_key > node.id and int_key < node.successor[0]):
+            # node.object_store[int_key] = value
+        # elif (int_key < node.id):
+            # conn = httplib.HTTPConnection(node.predecessor[1])
+            # conn.request('PUT', '/'+key, value)
+            # conn.getresponse()
+            # conn.close()
+        # elif (int_key > node.id and int_key > node.successor[0]):
+            # conn = httplib.HTTPConnection(node.successor[1])
+            # conn.request('PUT', '/'+key, value)
+            # conn.getresponse()
+            # conn.close()
+        # elif (int_key > node.id and int_key > node.successor[0] and node.successor[0] < node.id):
+            # node.object_store[int_key] = value
+        # else:
+            # self.send_response(404)
+            # self.end_headers()
 
         # Send OK response
-        self.send_response(200)
-        self.end_headers()
+        # self.send_response(200)
+        # self.end_headers()
 
 
     def do_GET(self):
@@ -118,10 +168,37 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(node.object_store[int_key])
         else:
-            self.send_response(404)
+            value = node.node_get(key)
+            print type(value), value
+            
+            if value == 0:
+                self.send_response(404)
+                self.send_header('Content-type','text/plain')
+                self.end_headers()
+                self.wfile.write("No object with key '%s' on this node" % key)
+
+            self.send_response(200)
             self.send_header('Content-type','text/plain')
+            self.send_header('Content-length', len(value))
             self.end_headers()
-            self.wfile.write("No object with key '%s' on this node" % key)
+            self.wfile.write(value)
+
+        
+        # elif (int_key < node.id):
+            # conn = httplib.HTTPConnection(node.predecessor[1])
+            # conn.request('GET', '/'+key)
+            # conn.getresponse()
+            # conn.close()
+        # elif (int_key > node.id and int_key > node.successor[0]):
+            # conn = httplib.HTTPConnection(node.successor[1])
+            # conn.request('GET', '/'+key)
+            # conn.getresponse()
+            # conn.close
+        # else:
+            # self.send_response(404)
+            # self.send_header('Content-type','text/plain')
+            # self.end_headers()
+            # self.wfile.write("No object with key '%s' on this node" % key)
 
 def hash_value(value):
     m = hashlib.sha1(value)

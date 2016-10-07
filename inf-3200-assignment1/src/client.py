@@ -67,6 +67,7 @@ if __name__ == "__main__":
     stop_time = start_time = time.time()
 
     for key, value in pairs.iteritems():
+        print "putting and getting keys"
         put_value(nodes[node_index], key, value)
         hits += 1
         returned = get_value(nodes[node_index], key)
